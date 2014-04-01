@@ -4,11 +4,6 @@
 * Copyright (C) 2014 pixelDepth.net All Rights Reserved.
 */
 
-/*
-* TODO:
-* 	- When editing post, collect data and parse into recording blocks
-*/
-
 $(function(){
 	(function(){
 
@@ -100,7 +95,7 @@ $(function(){
 			bind_events: function(){
 				var post_form = (yootil.location.check.editing())? yootil.form.edit_post_form() : yootil.form.post_form();
 
-				if(post_form.attr("class").match(/^form_((thread|post)_(new_edit))/i)){
+				if(post_form && post_form.attr("class").match(/^form_((thread|post)_(new|edit))/i)){
 					var evt = RegExp.$1;
 					var self = this;
 
@@ -214,25 +209,31 @@ $(function(){
 					if(this.recordings[post + "_1"]){
 						this.recordings[post + "_1"].playing = false;
 					}
+
+					// remove them instead, looping issues
+
+					this.recordings = {};
 				}
 			},
 
 			is_playing: function(post){
+				var playing = false;
+
 				if(this.recordings){
 					if(this.recordings[post + "_0"]){
 						if(this.recordings[post + "_0"].playing){
-							return true;
+							playing = true;
 						}
 					}
 
 					if(this.recordings[post + "_1"]){
 						if(this.recordings[post + "_1"].playing){
-							return true;
+							playing = true;
 						}
 					}
 				}
 
-				return false;
+				return playing;
 			},
 
 			play_selected_recordings: function(recordings, post_id){
@@ -675,6 +676,17 @@ $(function(){
 				var tab_content = this.create_tab_content();
 
 				$("<div id='postcomposer'>" + tab_content + "</div>").hide().insertBefore($("ul.wysiwyg-tabs"));
+
+				$("#postcomposer .piano").draggable({
+
+						axis: "x",
+						delay: 150,
+
+						drag: function(event, ui){
+							// constraints should be put here, blah :P
+						}
+
+				});
 
 				$("#postcomposer .piano div, #postcomposer .piano span").mousedown(function(){
 					$(this).addClass("active");
