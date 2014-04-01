@@ -6,9 +6,6 @@
 
 /*
 * TODO:
-* 	- Support other browsers that use the audio API (it's not standard yet)
-* 	- Finish recording blocks on post page
-* 	- Save recordings to post key
 * 	- In threads / posts parse recordings and show Play button with info
 * 	- When editing post, collect data and parse into recording blocks
 * 	- Allow members to like a song?
@@ -35,6 +32,9 @@ $(function(){
 			recordings: {},
 			recording_id: 0,
 			recordings_count: 0,
+			recording_start: 0,
+
+			playback: {},
 
 			key_lookup: {},
 
@@ -43,10 +43,22 @@ $(function(){
 			images: null,
 
 			init: function(){
-				if(AudioContext || webkitAudioContext){
+				if(typeof AudioContext != "undefined" || typeof webkitAudioContext != "undefined"){
+					if(typeof webkitAudioContext != "undefined"){
+						AudioContext = webkitAudioContext;
+
+						if(!AudioContext.prototype.createGain){
+							 AudioContext.prototype.createGain = AudioContext.prototype.createGainNode;
+						}
+
+					}
+
 					this.setup();
 
 					if(yootil.location.check.posting()){
+
+						// Main context
+
 						this.context = new AudioContext();
 						this.oscillator = this.context.createOscillator();
 						this.gain = this.context.createGain();
@@ -60,7 +72,16 @@ $(function(){
 
 						this.gain.connect(this.context.destination);
 
+						// Setup playback contexts
+
+						this.setup_playback_contexts();
+
 						this.create_composer();
+						this.bind_events();
+					}
+
+					if(yootil.location.check.thread() || yootil.location.check.recent_posts() || yootil.location.check.search_results()){
+						this.create_posts_recordings();
 					}
 				}
 			},
@@ -72,6 +93,104 @@ $(function(){
 				if(plugin.images){
 					this.images = plugin.images;
 				}
+			},
+
+			bind_events: function(){
+				var post_form = yootil.form.post_form();
+
+				if(post_form.attr("class").match(/^form_((thread|post)_new)/i)){
+					var evt = RegExp.$1;
+					var self = this;
+
+					post_form.bind("validated", function(){
+						yootil.key.get_key("pixeldepth_composer").set_on(evt, null, self.build_recordings_data());
+						this.submit();
+
+						return;
+					});
+				}
+			},
+
+			build_recordings_data: function(){
+				var data = [];
+
+				for(var r in this.recordings){
+					var recording = {
+
+						t: this.recordings[r].type,
+						a: this.recordings[r].attack,
+						r: this.recordings[r].release,
+						v: this.recordings[r].volume,
+						k: this.recordings[r].keys
+
+					};
+
+					recording.l = (this.recordings[r].loop)? 1: 0;
+					recording.o = (this.recordings[r].offset)? this.recordings[k].offset : 0;
+
+					data.push(recording);
+				}
+
+				return data;
+			},
+
+			create_post_recordings: function(){
+
+			},
+
+			// Due to context limitations, we have to reuse existing ones,
+			// so create these here now
+
+			setup_playback_contexts: function(){
+				this.playback = {
+
+					left: (function(){
+						var context = new AudioContext();
+						var oscillator = context.createOscillator();
+						var gain = context.createGain();
+
+						gain.gain.value = 0;
+						oscillator.start(0);
+						oscillator.frequency.value = 440;
+						oscillator.type = "sawtooth";
+						oscillator.connect(gain);
+
+						gain.connect(context.destination);
+
+						return {
+
+							context: context,
+							oscillator: oscillator,
+							gain: gain
+
+						};
+
+					})(),
+
+					right: (function(){
+						var context = new AudioContext();
+						var oscillator = context.createOscillator();
+						var gain = context.createGain();
+
+						gain.gain.value = 0;
+						oscillator.start(0);
+						oscillator.frequency.value = 440;
+						oscillator.type = "sawtooth";
+						oscillator.connect(gain);
+
+						gain.connect(context.destination);
+
+						return {
+
+							context: context,
+							oscillator: oscillator,
+							gain: gain
+
+						};
+
+					})()
+
+				};
 			},
 
 			create_composer: function(){
@@ -128,36 +247,39 @@ $(function(){
 				return octaves;
 			},
 
-			play_recording: function(id){
+			play_recording: function(id, left){
 				if(!this.recordings[id]){
 					return;
 				}
 
 				var self = this;
+				var player = (left)? "left" : "right";
 				var the_recording = this.recordings[id];
 				var first_key = the_recording.keys[0];
-				var context = new AudioContext();
-				var oscillator = context.createOscillator();
-				var gain = context.createGain();
+				var context = this.playback[player].context;
+				var oscillator = this.playback[player].oscillator;
+				var gain = this.playback[player].gain;
 
-				gain.gain.value = 0;
+				oscillator.type = (parseInt(the_recording.type))? this.get_oscillator_type(the_recording.type) : the_recording.type;
 
-				oscillator.start(0);
-				oscillator.frequency.value = 440;
-				oscillator.type = "sawtooth"; // change
-				oscillator.connect(gain);
-
-				gain.connect(context.destination);
+				var extra_offset = (this.recordings[id].offset)? (this.recordings[id].offset * 1000) : 0;
 
 				var offset = first_key[0] * 1000;
 				var start = performance.now() + offset;
-				var end = start + (the_recording.end * 1000);
+				var end = start + (the_recording.keys[the_recording.keys.length - 1][0] * 1000) + extra_offset + 500;
 				var current_key = 0;
-				var then = performance.now();
+				var then = performance.now() + extra_offset;
 
-				var play_back = function(){
-					if((performance.now() + offset) <= end){
+				this.recordings[id].playing = true;
+
+				var time_start = performance.now();
+
+				var play_back = function(timestamp){
+					if((performance.now() + offset) <= end && self.recordings[id] && self.recordings[id].playing){
 						var key = the_recording.keys[current_key] || null;
+
+						$("div[data-recording=" + id + "] .recording_playback_time").text(((timestamp - time_start) / 1000).toFixed(2));
+
 
 						if(key){
 							var time = (then + (key[0] * 1000));
@@ -179,6 +301,14 @@ $(function(){
 						}
 
 						requestAnimationFrame(play_back);
+					} else {
+						if(the_recording.loop){
+							self.play_recording(id);
+						} else {
+							self.recordings[id].playing = false;
+							$("div[data-recording=" + id + "] button.play_recording").css("opacity", 1);
+							$("div[data-recording=" + id + "] button.stop_recording_play").css("opacity", .5);
+						}
 					}
 				};
 
@@ -217,6 +347,16 @@ $(function(){
 				return keyboard;
 			},
 
+			has_key_space: function(){
+				var space = parseInt($("#keys_left_counter").text());
+
+				if(space > 0){
+					return true;
+				}
+
+				return false;
+			},
+
 			update_key_counter: function(){
 				var data = 0;
 				var space = 0;
@@ -232,19 +372,171 @@ $(function(){
 			},
 
 			create_recorded_block: function(id){
-				var block_parent = ($(".recordings #recording_one").children().length == 0)? $(".recordings #recording_one") : $(".recordings #recording_two");
-				var recording_block = "<div>";
+				if(!this.recordings[id] || !this.recordings[id].keys.length){
+					this.recordings_count --;
 
-				recording_block += id + "<br />";
-				recording_block += "<button data-recording='" + id + "' type='button'>Play</button><br />";
+					if(this.recordings[id]){
+						delete self.recordings[self.recording_id];
+					}
 
-				recording_block += "</div>";
+					return;
+				}
+
+				var player = ($(".recordings #recording_one").children().length == 0)? true : false;
+				var block_parent = (player)? $(".recordings #recording_one") : $(".recordings #recording_two");
+				var type = (player)? "left" : "right";
+				var recording_block = "<div data-recording='" + id + "' id='" + type + "'>";
+
+				recording_block += "<div class='recording-controls'>";
+
+				recording_block += "<button type='button' class='play_recording'><img src='" + this.images.play + "' />Play</button>";
+				recording_block += "<button type='button' class='stop_recording_play'><img src='" + this.images.stop + "' />Stop</button>";
+				recording_block += "<button type='button' class='loop_recording'><img src='" + this.images.loop + "' />Loop</button>";
+				recording_block += "</div><div class='delete_recording' title='Delete Recording'><img src='" + this.images.delete + "' /></div>";
+
+				recording_block += "<br  style='clear: both' />";
+
+				recording_block += "<div class='misc_controls'>";
+
+				recording_block += "<span class='recording_type'><select>";
+
+				var selected_type = this.recordings[id].type;
+				var options = ["Sawtooth", "Triangle", "Sine", "Square"];
+				var counter = 1;
+
+				while(counter < 5){
+					var selected = (selected_type == counter)? " selected='selected'" : "";
+
+					recording_block += "<option value='" + counter + "'" + selected + ">" + options[counter - 1] + "</option>";
+					counter ++;
+				}
+
+				recording_block += "</select></span>";
+
+				recording_block += "<span class='recording_playback_time'>0.00</span>";
+				recording_block += "<span class='recordings_slider_offset'><strong>Start Offset:</strong><div class='recording_offset'></div><span class='slider_offset_amount'>0</span></span>";
+
+
+				recording_block += "</div></div>";
+
 
 				var self = this;
 
-				block_parent.append($(recording_block).find("button").click(function(){
-					self.play_recording($(this).attr("data-recording"));
-				}));
+				block_parent.append($(recording_block));
+
+				block_parent.find("select").change(function(){
+					var parent = $(this).parent().parent().parent();
+					var id = parent.attr("data-recording");
+
+					self.recordings[id].type = self.get_oscillator_type(this.value);
+				});
+
+				block_parent.find(".recording_offset").slider({
+
+                  	value: 0,
+                  	min: 0,
+                  	max: 60,
+                  	step: 1,
+                  	slide: function(e, ui){
+                  		var parent = $(this).parent().parent();
+                  		var id = parent.attr("data-recording");
+
+                  		parent.find("span.slider_offset_amount").text(ui.value);
+                  	},
+
+                  	change: function(e, ui){
+                  		var parent = $(this).parent().parent();
+                  		var id = parent.parent().attr("data-recording");
+
+                  		if(self.recordings[id]){
+                  			self.recordings[id].offset = ui.value;
+                  		}
+                  	}
+
+				});
+
+				block_parent.find("button.play_recording").click(function(){
+					var parent = $(this).parent().parent();
+					var id = parent.attr("data-recording");
+
+					if(self.recordings[id]){
+						var player = (parent.attr("id") == "left")? true : false;
+
+						if(!self.recordings[id].playing){
+							self.play_recording(id, player);
+							$(this).css("opacity", 0.5);
+
+							$(this).parent().find(".stop_recording_play").css("opacity", 1);
+						}
+					}
+				});
+
+				block_parent.find("button.stop_recording_play").click(function(){
+					var id = $(this).parent().parent().attr("data-recording");
+
+					if(self.recordings[id]){
+						if(self.recordings[id].playing){
+							$(this).parent().find(".play_recording").css("opacity", 1);
+							self.recordings[id].playing = self.recordings[id].loop = false;
+						}
+					}
+				});
+
+				block_parent.find("button.loop_recording").click(function(){
+					var id = $(this).parent().parent().attr("data-recording");
+
+					if(self.recordings[id]){
+						if($(this).hasClass("looping")){
+							$(this).removeClass("looping");
+							self.recordings[id].loop = false;
+						} else {
+							$(this).addClass("looping");
+							self.recordings[id].loop = true;
+						}
+					}
+				});
+
+				block_parent.find("div.delete_recording").click(function(){
+					var id = $(this).parent().attr("data-recording");
+
+					if(self.recordings[id]){
+						if(self.recordings[id].playing){
+							self.recordings[id].playing = false;
+						}
+
+						delete self.recordings[id];
+						self.update_key_counter();
+						self.recordings_count --;
+						$(this).parent().parent().empty();
+						$("#postcomposer #control_record").removeClass("recording_disabled");
+					}
+				});
+			},
+
+			get_oscillator_type: function(value){
+				var type = "sawtooth";
+
+				switch(parseInt(value)){
+
+					case 1:
+						type = "sawtooth";
+						break;
+
+					case 2:
+						type = "triangle";
+						break;
+
+					case 3:
+						type = "sine";
+						break;
+
+					case 4:
+						type = "square";
+						break;
+
+				}
+
+				return type;
 			},
 
 			create_tab: function(){
@@ -275,9 +567,10 @@ $(function(){
 								self.recording_id = "id_" + Math.floor((Math.random() * 100000));
 							}
 
+							self.recording_start = parseFloat(now.toFixed(3));
+
 							self.recordings[self.recording_id] = {
 
-								start: parseFloat(now.toFixed(3)),
 								type: self.oscillator.type,
 								attack: self.attack,
 								release: self.release,
@@ -287,12 +580,14 @@ $(function(){
 							};
 						}
 
-						self.recordings[self.recording_id].keys.push([
+						if(self.has_key_space()){
+							self.recordings[self.recording_id].keys.push([
 
-							parseFloat(now.toFixed(2)),
-							parseInt($(this).attr("data-key"))
+								parseFloat(now.toFixed(2)) - self.recording_start,
+								parseInt($(this).attr("data-key"))
 
-						]);
+							]);
+						}
 
 						self.update_key_counter();
 					}
@@ -301,26 +596,7 @@ $(function(){
 				$("#postcomposer #piano_type").change(function(){
 					var value = $(this).val();
 
-					switch(parseInt(value)){
-
-						case 1:
-							self.oscillator.type = "sawtooth";
-							break;
-
-						case 2:
-							self.oscillator.type = "triangle";
-							break;
-
-						case 3:
-							self.oscillator.type = "sine";
-							break;
-
-						case 4:
-							self.oscillator.type = "square";
-							break;
-
-					}
-
+					self.oscillator.type = self.get_oscillator_type(value);
 				});
 
 				$("#postcomposer .slider div#slider_attack").slider({
@@ -380,13 +656,7 @@ $(function(){
 				$("#postcomposer #control_record").click(function(){
 					if($(this).hasClass("recording")){
 						self.recording = false;
-						self.recordings[self.recording_id].end = parseFloat(self.context.currentTime.toFixed(3));
 						self.create_recorded_block(self.recording_id);
-
-						//self.play_recording(self.recording_id);
-						//console.log(self.recordings);
-						//console.log(JSON.stringify(self.recordings[self.recording_id].keys).length);
-
 						self.recording_id = 0;
 
 						$(this).removeClass("recording");
@@ -396,6 +666,8 @@ $(function(){
 						} else {
 							$(this).removeClass("recording_disabled");
 						}
+
+
 					} else {
 						if(self.recordings_count < 2){
 							self.recordings_count ++;
