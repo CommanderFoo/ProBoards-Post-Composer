@@ -53,7 +53,7 @@ $(function(){
 
 					this.setup();
 
-					if(yootil.location.check.posting()){
+					if(yootil.location.check.posting() || yootil.location.check.editing()){
 
 						// Main context
 
@@ -76,6 +76,8 @@ $(function(){
 
 						this.create_composer();
 						this.bind_events();
+
+						this.check_for_recordings();
 					}
 
 					if(yootil.location.check.thread() || yootil.location.check.recent_posts() || yootil.location.check.search_results()){
@@ -96,9 +98,9 @@ $(function(){
 			},
 
 			bind_events: function(){
-				var post_form = yootil.form.post_form();
+				var post_form = (yootil.location.check.editing())? yootil.form.edit_post_form() : yootil.form.post_form();
 
-				if(post_form.attr("class").match(/^form_((thread|post)_new)/i)){
+				if(post_form.attr("class").match(/^form_((thread|post)_(new_edit))/i)){
 					var evt = RegExp.$1;
 					var self = this;
 
@@ -132,6 +134,32 @@ $(function(){
 				}
 
 				return data;
+			},
+
+			check_for_recordings: function(){
+				if(yootil.location.check.editing()){
+					if(proboards.dataHash && proboards.dataHash.page && proboards.dataHash.page.post && proboards.dataHash.page.post.id){
+						var post_id = proboards.dataHash.page.post.id;
+						var recordings = yootil.key.value("pixeldepth_composer", post_id);
+						var left = true;
+
+						for(var r = 0; r < recordings.length; r ++){
+							recordings[r].type = recordings[r].t;
+							recordings[r].loop = recordings[r].l;
+							recordings[r].volume = recordings[r].v;
+							recordings[r].attack = recordings[r].a;
+							recordings[r].release = recordings[r].r;
+							recordings[r].offset = recordings[r].o;
+							recordings[r].keys = recordings[r].k;
+
+							this.recordings[post_id + "_" + r] = recordings[r];
+							this.create_recorded_block(post_id + "_" + r);
+							left = false;
+						}
+					}
+
+					this.update_key_counter();
+				}
 			},
 
 			create_post_recordings: function(){
