@@ -4,6 +4,16 @@
 * Copyright (C) 2014 pixelDepth.net All Rights Reserved.
 */
 
+/*
+* TODO:
+* 	- Support other browsers that use the audio API (it's not standard yet)
+* 	- Finish recording blocks on post page
+* 	- Save recordings to post key
+* 	- In threads / posts parse recordings and show Play button with info
+* 	- When editing post, collect data and parse into recording blocks
+* 	- Allow members to like a song?
+*/
+
 $(function(){
 	(function(){
 
