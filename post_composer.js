@@ -6,9 +6,7 @@
 
 /*
 * TODO:
-* 	- In threads / posts parse recordings and show Play button with info
 * 	- When editing post, collect data and parse into recording blocks
-* 	- Allow members to like a song?
 */
 
 $(function(){
@@ -81,7 +79,9 @@ $(function(){
 					}
 
 					if(yootil.location.check.thread() || yootil.location.check.recent_posts() || yootil.location.check.search_results()){
-						this.create_posts_recordings();
+						this.setup_playback_contexts();
+						this.create_post_recordings();
+						yootil.ajax.after_search(this.create_post_recordings, this);
 					}
 				}
 			},
@@ -135,7 +135,96 @@ $(function(){
 			},
 
 			create_post_recordings: function(){
+				this.recordings = {};
+				this.create_octaves();
 
+				var posts = $("table.list tr.post");
+				var self = this;
+
+				posts.each(function(){
+					var id = $(this).attr("id").split("-")[1];
+					var recordings = yootil.key.value("pixeldepth_composer", id);
+					var post_player = "<div class='postcomposer-player'>";
+
+					post_player += "<img data-recording='" + id + "' title='A song is attached to this post.  Click to play' src='" + self.images.playsong + "' />";
+
+
+					post_player += "</div>";
+
+					if(recordings && recordings.length){
+						var custom = $(this).find(".mini-profile .postcomposersong");
+						var player = $(post_player);
+
+						player.find("img").click(function(){
+							if(self.is_playing(id)){
+								self.stop_playing(id);
+								$(this).attr("src", self.images.play);
+							} else {
+								self.recordings = {};
+								$(".postcomposer-player img").attr("src", self.images.playsong);
+								self.play_selected_recordings(recordings, id);
+								$(this).attr("src", self.images.stopsong);
+							}
+
+						});
+
+						if(custom.length){
+							custom.append($(player));
+						} else {
+							$(this).find(".mini-profile").append(player);
+						}
+					}
+				});
+			},
+
+			stop_playing: function(post){
+				if(this.recordings){
+					if(this.recordings[post + "_0"]){
+						this.recordings[post + "_0"].playing = false;
+					}
+
+					if(this.recordings[post + "_1"]){
+						this.recordings[post + "_1"].playing = false;
+					}
+				}
+			},
+
+			is_playing: function(post){
+				if(this.recordings){
+					if(this.recordings[post + "_0"]){
+						if(this.recordings[post + "_0"].playing){
+							return true;
+						}
+					}
+
+					if(this.recordings[post + "_1"]){
+						if(this.recordings[post + "_1"].playing){
+							return true;
+						}
+					}
+				}
+
+				return false;
+			},
+
+			play_selected_recordings: function(recordings, post_id){
+				if(recordings && post_id){
+					var left = true;
+
+					for(var r = 0; r < recordings.length; r ++){
+						recordings[r].type = recordings[r].t;
+						recordings[r].loop = recordings[r].l;
+						recordings[r].volume = recordings[r].v;
+						recordings[r].attack = recordings[r].a;
+						recordings[r].release = recordings[r].r;
+						recordings[r].offset = recordings[r].o;
+						recordings[r].keys = recordings[r].k;
+
+						this.recordings[post_id + "_" + r] = recordings[r];
+						this.play_recording(post_id + "_" + r, left, true);
+						left = false;
+					}
+				}
 			},
 
 			// Due to context limitations, we have to reuse existing ones,
@@ -247,7 +336,7 @@ $(function(){
 				return octaves;
 			},
 
-			play_recording: function(id, left){
+			play_recording: function(id, left, pre_recorded){
 				if(!this.recordings[id]){
 					return;
 				}
@@ -305,9 +394,21 @@ $(function(){
 						if(the_recording.loop){
 							self.play_recording(id);
 						} else {
-							self.recordings[id].playing = false;
-							$("div[data-recording=" + id + "] button.play_recording").css("opacity", 1);
-							$("div[data-recording=" + id + "] button.stop_recording_play").css("opacity", .5);
+							if(self.recordings[id]){
+								self.recordings[id].playing = false;
+							}
+
+							if(pre_recorded){
+								var post_id = id.split("_")[0];
+								var post = $("tr#post-" + post_id);
+
+								if(post.length){
+									post.find(".mini-profile .postcomposer-player img").attr("src", self.images.playsong);
+								}
+							} else {
+								$("div[data-recording=" + id + "] button.play_recording").css("opacity", 1);
+								$("div[data-recording=" + id + "] button.stop_recording_play").css("opacity", .5);
+							}
 						}
 					}
 				};

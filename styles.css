@@ -290,6 +290,18 @@ ul.piano li span {
 
 }
 
+.postcomposer-player {
+
+	text-align: center;
+
+}
+
+.postcomposer-player img {
+
+	cursor: pointer;
+
+}
+
 /* jQuery UI CSS */
 
 .ui-slider {
