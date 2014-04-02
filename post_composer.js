@@ -569,25 +569,25 @@ $(function(){
 
 				block_parent.find(".recording_offset").slider({
 
-                  	value: 0,
-                  	min: 0,
-                  	max: 60,
-                  	step: 1,
-                  	slide: function(e, ui){
-                  		var parent = $(this).parent().parent();
-                  		var id = parent.attr("data-recording");
+					value: 0,
+					min: 0,
+					max: 60,
+					step: 1,
+					slide: function(e, ui){
+						var parent = $(this).parent().parent();
+						var id = parent.attr("data-recording");
 
-                  		parent.find("span.slider_offset_amount").text(ui.value);
-                  	},
+						parent.find("span.slider_offset_amount").text(ui.value);
+					},
 
-                  	change: function(e, ui){
-                  		var parent = $(this).parent().parent();
-                  		var id = parent.parent().attr("data-recording");
+					change: function(e, ui){
+						var parent = $(this).parent().parent();
+						var id = parent.parent().attr("data-recording");
 
-                  		if(self.recordings[id]){
-                  			self.recordings[id].offset = ui.value;
-                  		}
-                  	}
+						if(self.recordings[id]){
+							self.recordings[id].offset = ui.value;
+						}
+					}
 
 				});
 
