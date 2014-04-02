@@ -123,7 +123,7 @@ ul.piano li span {
 
 	float: left;
 	margin-right: 20px;
-	width: 260px;
+	width: 160px;
 	margin-top: 8px;
 
 }
@@ -131,14 +131,14 @@ ul.piano li span {
 #postcomposer .controls .right-controls .slider div {
 
 	float: right;
-	width: 204px;
+	width: 106px;
 
 }
 
 #postcomposer .recording_offset {
 
 	float: right;
-	width: 158px;
+	width: 91px;
 
 }
 
@@ -184,7 +184,7 @@ ul.piano li span {
 
 	position: relative;
 	top: -20px;
-	left: 150px;
+	left: 98px;
 	font-size: 10px;
 
 }
@@ -192,7 +192,7 @@ ul.piano li span {
 #postcomposer .recordings_slider_offset .slider_offset_amount {
 
 	top: -1px;
-	left: 88px;
+	left: 58px;
 
 }
 
@@ -222,7 +222,7 @@ ul.piano li span {
 
 #postcomposer .recordings .recording_one, #postcomposer .recordings .recording_two {
 
-	width: 47.5%;
+	width: 45%;
 	border: 2px solid #E6E6E6;
 	border-radius: 5px;
 	height: 100px;
@@ -280,7 +280,7 @@ ul.piano li span {
 
 #postcomposer .recordings_slider_offset {
 
-	width: 245px;
+	width: 180px;
 
 }
 

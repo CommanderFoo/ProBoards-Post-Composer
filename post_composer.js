@@ -93,7 +93,13 @@ $(function(){
 			},
 
 			bind_events: function(){
-				var post_form = (yootil.location.check.editing())? yootil.form.edit_post_form() : yootil.form.post_form();
+				var post_form = "";
+
+				if(yootil.location.check.editing()){
+					post_form = (yootil.location.check.editing_thread())? yootil.form.edit_thread_form() : yootil.form.edit_post_form();
+				} else {
+					post_form = yootil.form.post_form();
+				}
 
 				if(post_form && post_form.attr("class").match(/^form_((thread|post)_(new|edit))/i)){
 					var evt = RegExp.$1;
@@ -123,7 +129,7 @@ $(function(){
 					};
 
 					recording.l = (this.recordings[r].loop)? 1: 0;
-					recording.o = (this.recordings[r].offset)? this.recordings[k].offset : 0;
+					recording.o = (this.recordings[r].offset)? this.recordings[r].offset : 0;
 
 					data.push(recording);
 				}
@@ -139,6 +145,7 @@ $(function(){
 						var left = true;
 
 						for(var r = 0; r < recordings.length; r ++){
+							this.recordings_count ++;
 							recordings[r].type = recordings[r].t;
 							recordings[r].loop = recordings[r].l;
 							recordings[r].volume = recordings[r].v;
@@ -181,7 +188,7 @@ $(function(){
 						player.find("img").click(function(){
 							if(self.is_playing(id)){
 								self.stop_playing(id);
-								$(this).attr("src", self.images.play);
+								$(this).attr("src", self.images.playsong);
 							} else {
 								self.recordings = {};
 								$(".postcomposer-player img").attr("src", self.images.playsong);
@@ -372,19 +379,18 @@ $(function(){
 
 				var self = this;
 				var player = (left)? "left" : "right";
-				var the_recording = this.recordings[id];
-				var first_key = the_recording.keys[0];
+				var first_key = this.recordings[id].keys[0];
 				var context = this.playback[player].context;
 				var oscillator = this.playback[player].oscillator;
 				var gain = this.playback[player].gain;
 
-				oscillator.type = (parseInt(the_recording.type))? this.get_oscillator_type(the_recording.type) : the_recording.type;
+				oscillator.type = (parseInt(this.recordings[id].type))? this.get_oscillator_type(this.recordings[id].type) : this.recordings[id].type;
 
 				var extra_offset = (this.recordings[id].offset)? (this.recordings[id].offset * 1000) : 0;
 
 				var offset = first_key[0] * 1000;
 				var start = performance.now() + offset;
-				var end = start + (the_recording.keys[the_recording.keys.length - 1][0] * 1000) + extra_offset + 500;
+				var end = start + (this.recordings[id].keys[this.recordings[id].keys.length - 1][0] * 1000) + extra_offset + 500;
 				var current_key = 0;
 				var then = performance.now() + extra_offset;
 
@@ -394,7 +400,7 @@ $(function(){
 
 				var play_back = function(timestamp){
 					if((performance.now() + offset) <= end && self.recordings[id] && self.recordings[id].playing){
-						var key = the_recording.keys[current_key] || null;
+						var key = self.recordings[id].keys[current_key] || null;
 
 						$("div[data-recording=" + id + "] .recording_playback_time").text(((timestamp - time_start) / 1000).toFixed(2));
 
@@ -410,9 +416,9 @@ $(function(){
 
 								gain.gain.cancelScheduledValues(now);
 								oscillator.frequency.setValueAtTime(freq, now);
-								gain.gain.setValueAtTime(the_recording.volume, now);
-								gain.gain.linearRampToValueAtTime(the_recording.volume, now + the_recording.attack);
-								gain.gain.linearRampToValueAtTime(0, now + the_recording.attack + the_recording.release);
+								gain.gain.setValueAtTime(self.recordings[id].volume, now);
+								gain.gain.linearRampToValueAtTime(self.recordings[id].volume, now + self.recordings[id].attack);
+								gain.gain.linearRampToValueAtTime(0, now + self.recordings[id].attack + self.recordings[id].release);
 							}
 						} else {
 							cancelAnimationFrame(play_back);
@@ -420,7 +426,7 @@ $(function(){
 
 						requestAnimationFrame(play_back);
 					} else {
-						if(the_recording.loop){
+						if(self.recordings[id].loop){
 							self.play_recording(id);
 						} else {
 							if(self.recordings[id]){
@@ -597,6 +603,10 @@ $(function(){
 							$(this).css("opacity", 0.5);
 
 							$(this).parent().find(".stop_recording_play").css("opacity", 1);
+
+							if($(this).parent().find(".loop_recording.looping").length){
+								self.recordings[id].loop = true;
+							}
 						}
 					}
 				});
@@ -884,7 +894,7 @@ $(function(){
 				var left_controls = "<div class='left-controls'>";
 
 				left_controls += "<button type='button' id='control_record'><img src='" + this.images.record + "' />Record</button>";
-				left_controls += "<span class='keys_counter'><strong>Key Space Left:</strong> <span id='keys_left_counter'>" + yootil.number_format(this.MAX_KEY_SPACE) + "</span></span>";
+				left_controls += "<span class='keys_counter'><strong>Key Space:</strong> <span id='keys_left_counter'>" + yootil.number_format(this.MAX_KEY_SPACE) + "</span></span>";
 
 				left_controls += "</div>";
 
