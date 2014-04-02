@@ -752,49 +752,49 @@ $(function(){
 
 				$("#postcomposer .slider div#slider_attack").slider({
 
-                  	value: this.attack,
-                  	min: 0.01,
-                  	max: 3.00,
-                  	step: 0.01,
-                  	slide: function(e, ui){
-                  		$("#slider-attack-amount").html(ui.value);
-                  	},
+					value: this.attack,
+					min: 0.01,
+					max: 3.00,
+					step: 0.01,
+					slide: function(e, ui){
+						$("#slider-attack-amount").html(ui.value);
+					},
 
-                  	change: function(e, ui){
-                  		self.attack = parseFloat(ui.value);
-                  	}
+					change: function(e, ui){
+						self.attack = parseFloat(ui.value);
+					}
 
 				});
 
 				$("#postcomposer .slider div#slider_release").slider({
 
-                  	value: this.release,
-                  	min: 0.04,
-                  	max: 3.00,
-                  	step: 0.01,
-                  	slide: function(e, ui){
-                  		$("#slider-release-amount").html(ui.value);
-                  	},
+					value: this.release,
+					min: 0.04,
+					max: 3.00,
+					step: 0.01,
+					slide: function(e, ui){
+						$("#slider-release-amount").html(ui.value);
+					},
 
-                  	change: function(e, ui){
-                  		self.release = parseFloat(ui.value);
-                  	}
+					change: function(e, ui){
+						self.release = parseFloat(ui.value);
+					}
 
 				});
 
 				$("#postcomposer .slider div#slider_volume").slider({
 
-                  	value: this.volume,
-                  	min: 0.001,
-                  	max: 1,
-                  	step: 0.001,
-                  	slide: function(e, ui){
-                  		$("#slider-volume-amount").html(ui.value);
-                  	},
+					value: this.volume,
+					min: 0.001,
+					max: 1,
+					step: 0.001,
+					slide: function(e, ui){
+						$("#slider-volume-amount").html(ui.value);
+					},
 
-                  	change: function(e, ui){
-                  		self.volume = parseFloat(ui.value);
-                  	}
+					change: function(e, ui){
+						self.volume = parseFloat(ui.value);
+					}
 
 				});
 
