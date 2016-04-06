@@ -12,7 +12,7 @@ $(function(){
 			attack: 0.2,
 			release: 0.5,
 			type: "sawtooth",
-			volume: 1,
+			volume: 0.5,
 
 			starting_key: 1,
 			ending_key: 88,
@@ -698,51 +698,7 @@ $(function(){
 
 				});
 
-				$("#postcomposer .piano div, #postcomposer .piano span").mousedown(function(){
-					$(this).addClass("active");
-
-					var now = self.context.currentTime;
-					var freq = parseFloat($(this).attr("data-frequency"));
-
-					self.gain.gain.cancelScheduledValues(now);
-					self.oscillator.frequency.setValueAtTime(freq, now);
-					self.gain.gain.setValueAtTime(self.volume, now);
-					self.gain.gain.linearRampToValueAtTime(self.volume, now + self.attack);
-					self.gain.gain.linearRampToValueAtTime(0, now + self.attack + self.release);
-
-					if(self.recording){
-						if(!self.recording_id){
-							self.recording_id = "id_" + Math.floor((Math.random() * 1000));
-
-							if(self.recordings[self.recording_id]){
-								self.recording_id = "id_" + Math.floor((Math.random() * 100000));
-							}
-
-							self.recording_start = parseFloat(now.toFixed(3));
-
-							self.recordings[self.recording_id] = {
-
-								type: self.oscillator.type,
-								attack: self.attack,
-								release: self.release,
-								volume: self.volume,
-								keys: []
-
-							};
-						}
-
-						if(self.has_key_space()){
-							self.recordings[self.recording_id].keys.push([
-
-								parseFloat(now.toFixed(2)) - self.recording_start,
-								parseInt($(this).attr("data-key"))
-
-							]);
-						}
-
-						self.update_key_counter();
-					}
-				});
+				
 
 				$("#postcomposer #piano_type").change(function(){
 					var value = $(this).val();
@@ -798,11 +754,195 @@ $(function(){
 
 				});
 
+				
+				
+				//_lion123's quick fix
+				// data for key:    data-key
+				// START: 28(z), end- xz
+				// 
+				composerActive = false;
+				
+				keyNoteHash = {
+					"k90":28,//z
+					"k83":29,//s
+					"k88":30,//x
+					"k68":31,//d
+					"k67":32,//c
+					"k86":33,//v
+					"k71":34,//g
+					"k66":35,//b
+					"k72":36,//h
+					"k78":37,//n
+					"k74":38,//j
+					"k77":39,//m
+					"k188":40,//,
+					"k76":41,//l
+					"k190":42,//.
+					"k186":43,//;
+					"k191":44,///
+					//second row:
+					"k81":40,//q
+					"k50":41,//2
+					"k87":42,//w
+					"k51":43,//3
+					"k69":44,//e
+					"k82":45,//r
+					"k53":46,//5
+					"k84":47,//t
+					"k54":48,//6
+					"k89":49,//y
+					"k55":50,//7
+					"k85":51,//u
+					"k73":52,//i
+					"k57":53,//9
+					"k79":54,//o
+					"k48":55,//0
+					"k80":56,//p
+					"k219":57,//[
+					"k187":58,//=
+					"k221":59//]
+					
+				}
+				tryPlayNote = function(keyCode){
+					if(("k"+keyCode) in keyNoteHash){
+						var note = keyNoteHash["k"+keyCode];
+						playNote($(document).find("[data-key='" + note + "']"));
+					}
+				}
+				
+				document.onkeydown = function(evt) {
+					evt = evt || window.event;
+					if(composerActive == true)
+					{
+						tryPlayNote(evt.keyCode);
+					}
+				};
+				
+				document.onkeyup = function(evt){
+					stopNote();
+				}
+				
+				playNote = function(note){
+					note.addClass("active");
+
+					var now = self.context.currentTime;
+					var freq = parseFloat(note.attr("data-frequency"));
+
+					self.gain.gain.cancelScheduledValues(now);
+					self.oscillator.frequency.setValueAtTime(freq, now);
+					self.gain.gain.setValueAtTime(self.volume, now);
+					self.gain.gain.linearRampToValueAtTime(self.volume, now + self.attack);
+					self.gain.gain.linearRampToValueAtTime(0, now + self.attack + self.release);
+
+					if(self.recording){
+						if(!self.recording_id){
+							self.recording_id = "id_" + Math.floor((Math.random() * 1000));
+
+							if(self.recordings[self.recording_id]){
+								self.recording_id = "id_" + Math.floor((Math.random() * 100000));
+							}
+
+							self.recording_start = parseFloat(now.toFixed(3));
+
+							self.recordings[self.recording_id] = {
+
+								type: self.oscillator.type,
+								attack: self.attack,
+								release: self.release,
+								volume: self.volume,
+								keys: []
+
+							};
+						}
+
+						if(self.has_key_space()){
+							self.recordings[self.recording_id].keys.push([
+
+								parseFloat(now.toFixed(2)) - self.recording_start,
+								parseInt(note.attr("data-key"))
+
+							]);
+						}
+
+						self.update_key_counter();
+					}
+				}
+				
+				stopNote = function(note){
+					setTimeout(function(){
+						$("#postcomposer .piano div, #postcomposer .piano div").removeClass("active");
+					}, 200);
+				}
+				
+				$("#postcomposer .piano div, #postcomposer .piano span").mousedown(function(){
+					composerActive = true;
+					playNote($(this));
+				});
+				
+				$("#postcomposer .piano div, #postcomposer .piano span").mouseup(function(){
+					stopNote();
+				});
+				
+				
+				
+				
+				
+				//Original:
+				/*
+				
+				$("#postcomposer .piano div, #postcomposer .piano span").mousedown(function(){
+					$(this).addClass("active");
+
+					var now = self.context.currentTime;
+					var freq = parseFloat($(this).attr("data-frequency"));
+
+					self.gain.gain.cancelScheduledValues(now);
+					self.oscillator.frequency.setValueAtTime(freq, now);
+					self.gain.gain.setValueAtTime(self.volume, now);
+					self.gain.gain.linearRampToValueAtTime(self.volume, now + self.attack);
+					self.gain.gain.linearRampToValueAtTime(0, now + self.attack + self.release);
+
+					if(self.recording){
+						if(!self.recording_id){
+							self.recording_id = "id_" + Math.floor((Math.random() * 1000));
+
+							if(self.recordings[self.recording_id]){
+								self.recording_id = "id_" + Math.floor((Math.random() * 100000));
+							}
+
+							self.recording_start = parseFloat(now.toFixed(3));
+
+							self.recordings[self.recording_id] = {
+
+								type: self.oscillator.type,
+								attack: self.attack,
+								release: self.release,
+								volume: self.volume,
+								keys: []
+
+							};
+						}
+
+						if(self.has_key_space()){
+							self.recordings[self.recording_id].keys.push([
+
+								parseFloat(now.toFixed(2)) - self.recording_start,
+								parseInt($(this).attr("data-key"))
+
+							]);
+						}
+
+						self.update_key_counter();
+					}
+				});
+				
 				$("#postcomposer .piano div, #postcomposer .piano span").mouseup(function(){
 					setTimeout(function(){
 						$("#postcomposer .piano div, #postcomposer .piano div").removeClass("active");
 					}, 200);
 				});
+				
+				*/
 
 				$("#postcomposer #control_record").click(function(){
 					if($(this).hasClass("recording")){
@@ -894,7 +1034,7 @@ $(function(){
 				var left_controls = "<div class='left-controls'>";
 
 				left_controls += "<button type='button' id='control_record'><img src='" + this.images.record + "' />Record</button>";
-				left_controls += "<span class='keys_counter'><strong>Key Space:</strong> <span id='keys_left_counter'>" + yootil.number_format(this.MAX_KEY_SPACE) + "</span></span>";
+				left_controls += "<span class='keys_counter'><strong>WARNING! Click any key with your mouse to turn on keyboard support! Key Space:</strong> <span id='keys_left_counter'>" + yootil.number_format(this.MAX_KEY_SPACE) + "</span></span>";
 
 				left_controls += "</div>";
 
